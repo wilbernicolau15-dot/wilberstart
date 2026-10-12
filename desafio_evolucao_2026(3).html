@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desafio de Evolução — 2026</title>
+<style>
+  :root { --bg:#0b1020; --panel:#141c30; --panel2:#1b2740; --text:#f4f7ff; --muted:#a8b4cc; --accent:#8b9cff; --good:#62d6a5; --line:#2b3854; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:linear-gradient(150deg,#0b1020,#111a2e 65%,#18223a); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; min-height:100vh; }
+  main { max-width:900px; margin:0 auto; padding:28px 16px 56px; }
+  header { margin-bottom:22px; }
+  .eyebrow { color:var(--good); text-transform:uppercase; letter-spacing:.13em; font-size:.76rem; font-weight:800; }
+  h1 { margin:.3rem 0 .5rem; font-size:clamp(1.8rem,5vw,3rem); line-height:1.12; }
+  p { color:var(--muted); margin:.35rem 0; }
+  .panel { background:rgba(20,28,48,.94); border:1px solid var(--line); border-radius:18px; padding:18px; margin:16px 0; box-shadow:0 12px 35px #0002; }
+  .progress-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .count { font-size:1.35rem; font-weight:800; white-space:nowrap; }
+  .bar { height:10px; background:#2a3550; border-radius:999px; overflow:hidden; margin:12px 0 6px; }
+  .bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--good)); transition:width .2s; }
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
+  button, input, textarea { font:inherit; }
+  button { cursor:pointer; border:1px solid var(--line); border-radius:10px; padding:9px 13px; color:var(--text); background:var(--panel2); }
+  button:hover { filter:brightness(1.12); }
+  button.active { background:var(--accent); color:#10162b; border-color:var(--accent); font-weight:750; }
+  .category { margin-top:22px; }
+  .category h2 { font-size:1.1rem; margin:0 0 10px; }
+  .task { display:grid; grid-template-columns:auto 1fr; gap:12px; padding:14px; margin:8px 0; background:#111a2c; border:1px solid var(--line); border-radius:13px; }
+  .task.done { border-color:#357d68; background:#112a2a; }
+  .task input[type=checkbox] { width:21px; height:21px; margin-top:3px; accent-color:var(--good); cursor:pointer; }
+  .task-title { font-weight:750; }
+  .task.done .task-title { color:var(--good); }
+  .task-desc { color:var(--muted); font-size:.92rem; margin-top:3px; }
+  .task-meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+  .add-form { display:grid; gap:10px; margin-top:12px; }
+  .add-form input, .add-form textarea, .add-form select { width:100%; color:var(--text); background:#0b1221; border:1px solid var(--line); border-radius:10px; padding:10px 11px; }
+  .add-row { display:grid; grid-template-columns:1fr; gap:10px; }
+  .custom-tag { color:#c8d0ff; font-size:.75rem; border:1px solid #46518a; border-radius:999px; padding:2px 7px; margin-left:6px; white-space:nowrap; }
+  @media (min-width:600px) { .add-row { grid-template-columns:1fr 1fr; } }
+  .date { background:#0b1221; color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:5px 8px; font-size:.84rem; }
+  .notes { width:100%; margin-top:9px; min-height:54px; resize:vertical; color:var(--text); background:#0b1221; border:1px solid var(--line); border-radius:9px; padding:9px; }
+  .notes::placeholder { color:#7e8ba6; }
+  .small { font-size:.85rem; color:var(--muted); }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .danger { border-color:#74404b; color:#ffc4cd; }
+  footer { color:var(--muted); font-size:.85rem; margin-top:20px; }
+  @media (min-width:650px) { .task { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Plano pessoal • 2026</div>
+    <h1>Desafio de Evolução</h1>
+    <p>Marca cada missão quando a cumprires, regista a data e escreve notas sobre o teu progresso. O teu objetivo é chegar a 31 de dezembro com provas da tua evolução.</p>
+  </header>
+
+  <section class="panel" aria-live="polite">
+    <div class="progress-top"><strong>Progresso geral</strong><span class="count" id="count">0 de 20</span></div>
+    <div class="bar"><div class="bar-fill" id="bar"></div></div>
+    <p id="message">Cada pequena vitória conta. Começa pela próxima ação possível.</p>
+  </section>
+
+  <div class="filters" role="group" aria-label="Filtrar missões">
+    <button class="active" data-filter="all">Todas</button>
+    <button data-filter="todo">Por fazer</button>
+    <button data-filter="done">Concluídas</button>
+  </div>
+
+  <section class="panel" id="addPanel">
+    <h2 style="margin-top:0">Adicionar uma missão</h2>
+    <p class="small">Cria os teus próprios objetivos e escolhe a categoria em que se encaixam.</p>
+    <form class="add-form" id="addForm">
+      <input id="newTitle" maxlength="100" placeholder="Nome do item (ex.: Aprender uma nova competência)" required>
+      <textarea id="newDesc" rows="2" maxlength="300" placeholder="Descrição ou critério para considerar a missão concluída (opcional)"></textarea>
+      <div class="add-row">
+        <select id="newCat" aria-label="Categoria do novo item">
+          <option value="1. Evolução pessoal">1. Evolução pessoal</option>
+          <option value="2. Ganho de dinheiro">2. Ganho de dinheiro</option>
+          <option value="3. Estudos e inteligência">3. Estudos e inteligência</option>
+          <option value="4. Coragem e força mental">4. Coragem e força mental</option>
+          <option value="5. Treino e disciplina física">5. Treino e disciplina física</option>
+          <option value="6. Outros objetivos">6. Outros objetivos</option>
+        </select>
+        <button type="submit" class="active">+ Adicionar à lista</button>
+      </div>
+    </form>
+  </section>
+
+  <div id="tasks"></div>
+
+  <section class="panel">
+    <h2 style="margin-top:0">Guardar ou transferir o teu progresso</h2>
+    <p class="small">O progresso é guardado automaticamente neste navegador/dispositivo. Para ter uma cópia, exporta um ficheiro JSON ou descarrega um resumo em texto.</p>
+    <div class="actions" style="margin-top:12px">
+      <button id="export">Exportar progresso (JSON)</button>
+      <button id="summary">Descarregar resumo (TXT)</button>
+      <button id="importBtn">Importar progresso</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <button class="danger" id="reset">Apagar todo o progresso</button>
+    </div>
+    <p id="status" class="small" aria-live="polite"></p>
+  </section>
+
+  <footer>Nota: se abrires este ficheiro noutro navegador ou dispositivo, os dados não passam automaticamente. Exporta uma cópia para não perderes o registo.</footer>
+</main>
+
+<script>
+const missions = [
+  {cat:"1. Evolução pessoal", title:"Criar uma rotina diária", desc:"Definir horários para acordar, estudar, treinar e descansar."},
+  {cat:"1. Evolução pessoal", title:"Eliminar um mau hábito", desc:"Escolher um hábito que desperdiça tempo e reduzi-lo durante 30 dias."},
+  {cat:"1. Evolução pessoal", title:"Ler 10 páginas por dia", desc:"Escolher um livro que melhore o teu conhecimento, disciplina ou mentalidade."},
+  {cat:"1. Evolução pessoal", title:"Fazer uma avaliação semanal", desc:"Aos domingos, escrever três coisas que fizeste bem e três que precisas de melhorar."},
+  {cat:"2. Ganho de dinheiro", title:"Ganhar o teu primeiro dinheiro extra", desc:"Encontrar um pequeno serviço ou trabalho legítimo que possas fazer."},
+  {cat:"2. Ganho de dinheiro", title:"Criar uma fonte de rendimento", desc:"Experimentar vender roupa, prestar serviços, fazer trabalhos digitais ou ajudar estudantes."},
+  {cat:"2. Ganho de dinheiro", title:"Registar entradas e saídas", desc:"Anotar cada kwanza que recebes e gastas."},
+  {cat:"2. Ganho de dinheiro", title:"Poupar uma percentagem de cada ganho", desc:"Começar com 10%, se for possível, sem prejudicar transporte, alimentação ou outras necessidades essenciais."},
+  {cat:"3. Estudos e inteligência", title:"Cumprir os teus dois períodos de estudo", desc:"Às 14h, fazer os TPC e rever as aulas; às 20h, preparar as matérias do dia seguinte."},
+  {cat:"3. Estudos e inteligência", title:"Melhorar a Matemática", desc:"Resolver pelo menos cinco exercícios por dia de estudo e corrigir os erros."},
+  {cat:"3. Estudos e inteligência", title:"Reforçar as disciplinas mais difíceis", desc:"Dedicar tempo extra às matérias em que tens notas negativas."},
+  {cat:"3. Estudos e inteligência", title:"Preparar testes com antecedência", desc:"Começar a revisão pelo menos duas semanas antes das avaliações."},
+  {cat:"4. Coragem e força mental", title:"Fazer algo desconfortável por semana", desc:"Por exemplo, apresentar uma ideia em aula ou iniciar uma conversa."},
+  {cat:"4. Coragem e força mental", title:"Aprender a dizer não", desc:"Não aceitar tudo apenas por medo de desagradar às pessoas."},
+  {cat:"4. Coragem e força mental", title:"Enfrentar os problemas sem fugir", desc:"Resolver uma tarefa difícil antes de procurar distrações."},
+  {cat:"4. Coragem e força mental", title:"Controlar as reações emocionais", desc:"Quando estiveres irritado, fazer uma pausa, respirar e responder quando estiveres mais calmo."},
+  {cat:"5. Treino e disciplina física", title:"Seguir um plano de treino", desc:"Treinar com consistência, descanso e técnica correta."},
+  {cat:"5. Treino e disciplina física", title:"Melhorar a alimentação para ganhar massa", desc:"Comer regularmente e incluir alimentos acessíveis como arroz, feijão, leite, amendoim e ovos quando disponíveis."},
+  {cat:"5. Treino e disciplina física", title:"Registar a evolução física", desc:"Anotar o peso uma vez por semana e acompanhar as repetições dos exercícios."},
+  {cat:"5. Treino e disciplina física", title:"Proteger o sono e a recuperação", desc:"Manter horários regulares e dormir o suficiente para a tua idade."}
+];
+
+const KEY = "desafio-evolucao-2026-v1";
+const CUSTOM_KEY = "desafio-evolucao-2026-custom-v1";
+let state = loadState();
+let customMissions = loadCustomMissions();
+let filter = "all";
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; }
+}
+function loadCustomMissions() {
+  try {
+    const items = JSON.parse(localStorage.getItem(CUSTOM_KEY));
+    return Array.isArray(items) ? items.filter(x => x && typeof x.title === "string").map(x => ({
+      id: String(x.id || ("custom-" + Math.random().toString(36).slice(2))),
+      cat: String(x.cat || "6. Outros objetivos"),
+      title: String(x.title).slice(0,100),
+      desc: String(x.desc || "").slice(0,300),
+      custom: true
+    })) : [];
+  } catch { return []; }
+}
+function saveCustomMissions() {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(customMissions)); } catch {}
+}
+function saveState() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  updateProgress();
+}
+function escapeHTML(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function allMissions() {
+  return [
+    ...missions.map((m,i) => ({...m, key:"base-"+i, stateKey:String(i), custom:false})),
+    ...customMissions.map(m => ({...m, key:m.id, stateKey:m.id, custom:true}))
+  ];
+}
+function updateProgress() {
+  const all = allMissions();
+  const completed = all.filter(m=>state[m.stateKey]?.done).length;
+  document.getElementById("count").textContent = `${completed} de ${all.length}`;
+  document.getElementById("bar").style.width = `${all.length ? completed / all.length * 100 : 0}%`;
+  document.getElementById("message").textContent = completed === all.length
+    ? "Todas as missões estão concluídas! Revê as tuas notas e reconhece o trabalho que fizeste."
+    : completed >= all.length * .75 ? "Excelente progresso. Continua até fechares as últimas missões."
+    : completed >= all.length * .4 ? "Já estás a construir consistência. Mantém o ritmo."
+    : "Cada pequena vitória conta. Começa pela próxima ação possível.";
+}
+function render() {
+  const root = document.getElementById("tasks");
+  root.innerHTML = "";
+  let lastCat = "";
+  allMissions().forEach((m) => {
+    const data = state[m.stateKey] || {};
+    if (filter === "done" && !data.done) return;
+    if (filter === "todo" && data.done) return;
+    if (m.cat !== lastCat) {
+      const section = document.createElement("section");
+      section.className = "category";
+      section.innerHTML = `<h2>${escapeHTML(m.cat)}</h2>`;
+      root.appendChild(section);
+      lastCat = m.cat;
+    }
+    const section = root.lastElementChild;
+    const article = document.createElement("article");
+    article.className = `task${data.done ? " done" : ""}`;
+    article.innerHTML = `
+      <input type="checkbox" id="task-${escapeHTML(m.stateKey)}" ${data.done ? "checked" : ""} aria-label="Marcar ${escapeHTML(m.title)} como concluída">
+      <div>
+        <label class="task-title" for="task-${escapeHTML(m.stateKey)}">${m.custom ? "" : (missions.findIndex(x=>x.title===m.title)+1)+". "}${escapeHTML(m.title)}${m.custom ? '<span class="custom-tag">Personalizado</span>' : ""}</label>
+        <div class="task-desc">${escapeHTML(m.desc)}</div>
+        <div class="task-meta">
+          <span class="small">${data.done ? "Concluída em:" : "Data de conclusão:"}</span>
+          <input class="date" type="date" aria-label="Data de conclusão: ${escapeHTML(m.title)}" value="${escapeHTML(data.date || "")}" ${data.done ? "" : "disabled"}>
+          ${m.custom ? '<button type="button" class="danger remove-custom">Remover item</button>' : ""}
+        </div>
+        <textarea class="notes" rows="2" placeholder="Notas: o que fizeste, resultado, próximo passo..." aria-label="Notas: ${escapeHTML(m.title)}">${escapeHTML(data.notes || "")}</textarea>
+      </div>`;
+    const checkbox = article.querySelector('input[type="checkbox"]');
+    const date = article.querySelector('input[type="date"]');
+    const notes = article.querySelector("textarea");
+    checkbox.addEventListener("change", () => {
+      state[m.stateKey] = {...(state[m.stateKey]||{}), done:checkbox.checked, date:checkbox.checked ? (state[m.stateKey]?.date || new Date().toISOString().slice(0,10)) : ""};
+      saveState(); render();
+    });
+    date.addEventListener("change", () => { state[m.stateKey] = {...(state[m.stateKey]||{}), date:date.value}; saveState(); });
+    notes.addEventListener("input", () => { state[m.stateKey] = {...(state[m.stateKey]||{}), notes:notes.value}; saveState(); });
+    const remove = article.querySelector(".remove-custom");
+    if (remove) remove.addEventListener("click", () => {
+      if (!confirm(`Remover o item "${m.title}" e as respetivas notas?`)) return;
+      customMissions = customMissions.filter(x=>x.id!==m.id);
+      delete state[m.stateKey];
+      saveCustomMissions(); saveState(); render();
+      document.getElementById("status").textContent = "Item personalizado removido.";
+    });
+    section.appendChild(article);
+  });
+  updateProgress();
+}
+document.getElementById("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const title = document.getElementById("newTitle").value.trim();
+  const desc = document.getElementById("newDesc").value.trim();
+  const cat = document.getElementById("newCat").value;
+  if (!title) return;
+  const item = {id:"custom-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7), cat, title, desc, custom:true};
+  customMissions.push(item);
+  saveCustomMissions();
+  document.getElementById("addForm").reset();
+  filter = "all";
+  document.querySelectorAll("[data-filter]").forEach(b=>b.classList.toggle("active", b.dataset.filter==="all"));
+  render();
+  document.getElementById("status").textContent = `O item "${title}" foi adicionado à lista.`;
+  document.getElementById("tasks").scrollIntoView({behavior:"smooth", block:"start"});
+});
+document.querySelectorAll("[data-filter]").forEach(btn => btn.addEventListener("click", () => {
+  filter = btn.dataset.filter;
+  document.querySelectorAll("[data-filter]").forEach(b=>b.classList.toggle("active", b===btn));
+  render();
+}));
+function download(name, content, type) {
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+document.getElementById("export").addEventListener("click", () => {
+  download("progresso-desafio-2026.json", JSON.stringify({version:2, exportedAt:new Date().toISOString(), state, customMissions}, null, 2), "application/json");
+  document.getElementById("status").textContent = "Cópia JSON preparada para guardar.";
+});
+document.getElementById("summary").addEventListener("click", () => {
+  const lines = ["DESAFIO DE EVOLUÇÃO — 2026", `Exportado em: ${new Date().toLocaleDateString("pt-PT")}`, ""];
+  allMissions().forEach((m,i) => {
+    const d = state[m.stateKey] || {};
+    lines.push(`${d.done ? "[CONCLUÍDA]" : "[POR FAZER]"} ${i+1}. ${m.title} [${m.cat}]`);
+    if (d.date) lines.push(`  Data: ${d.date}`);
+    if (d.notes) lines.push(`  Notas: ${d.notes}`);
+  });
+  download("resumo-desafio-2026.txt", lines.join("\n"), "text/plain;charset=utf-8");
+  document.getElementById("status").textContent = "Resumo TXT preparado para guardar.";
+});
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const imported = parsed.state || parsed;
+    if (!imported || typeof imported !== "object") throw new Error("invalid");
+    state = {};
+    Object.keys(imported).forEach(k => {
+      if (imported[k] && typeof imported[k] === "object") state[k] = {done:!!imported[k].done, date:String(imported[k].date||""), notes:String(imported[k].notes||"")};
+    });
+    if (Array.isArray(parsed.customMissions)) {
+      customMissions = parsed.customMissions.filter(x => x && typeof x.title === "string").map(x => ({
+        id:String(x.id || ("custom-"+Math.random().toString(36).slice(2))),
+        cat:String(x.cat || "6. Outros objetivos"),
+        title:String(x.title).slice(0,100),
+        desc:String(x.desc || "").slice(0,300),
+        custom:true
+      }));
+      saveCustomMissions();
+    }
+    saveState(); render();
+    document.getElementById("status").textContent = "Progresso importado com sucesso.";
+  } catch { document.getElementById("status").textContent = "Não foi possível importar. Escolhe um ficheiro JSON exportado por esta página."; }
+  e.target.value = "";
+});
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm("Tens a certeza de que queres apagar todas as missões, datas e notas? Esta ação não pode ser desfeita sem uma cópia exportada.")) return;
+  state = {}; saveState(); render();
+  document.getElementById("status").textContent = "Todo o progresso foi apagado.";
+});
+render();
+</script>
+</body>
+</html>
